@@ -57,6 +57,7 @@ struct ovsdb_jsonrpc_remote_status {
     char *locks_lost;
     int n_connections;
     ovs_be16 bound_port;
+    char *active_connections;
 };
 bool ovsdb_jsonrpc_server_get_remote_status(
     const struct ovsdb_jsonrpc_server *, const char *target,

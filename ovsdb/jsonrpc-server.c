@@ -293,6 +293,11 @@ ovsdb_jsonrpc_server_del_remote(struct shash_node *node)
     free(remote);
 }
 
+static void
+ovsdb_jsonrpc_get_active_connections(
+    struct ovsdb_jsonrpc_remote *remote,
+    struct ovsdb_jsonrpc_remote_status *status);
+
 /* Stores status information for the remote named 'target', which should have
  * been configured on 'svr' with a call to ovsdb_jsonrpc_server_set_remotes(),
  * into '*status'.  On success returns true, on failure (if 'svr' doesn't have
@@ -318,6 +323,7 @@ ovsdb_jsonrpc_server_get_remote_status(
         status->bound_port = pstream_get_bound_port(remote->listener);
         status->is_connected = !ovs_list_is_empty(&remote->sessions);
         status->n_connections = ovs_list_size(&remote->sessions);
+        ovsdb_jsonrpc_get_active_connections(remote, status);
         return true;
     }
 
@@ -331,6 +337,7 @@ ovsdb_jsonrpc_server_free_remote_status(
     free(status->locks_held);
     free(status->locks_waiting);
     free(status->locks_lost);
+    free(status->active_connections);
 }
 
 /* Forces all of the JSON-RPC sessions managed by 'svr' to disconnect and
@@ -542,6 +549,28 @@ ovsdb_jsonrpc_session_run_all(struct ovsdb_jsonrpc_remote *remote)
             ovsdb_jsonrpc_session_close(s);
         }
     }
+}
+
+/* This function retrieves active remote connection names, for example,
+ * tcp:192.168.0.7:42408,tcp:192.168.0.11:44354 and copies to status */
+static void
+ovsdb_jsonrpc_get_active_connections(
+    struct ovsdb_jsonrpc_remote *remote,
+    struct ovsdb_jsonrpc_remote_status *status)
+{
+    struct ovsdb_jsonrpc_session *s, *next;
+    struct jsonrpc_session *js;
+    struct ds active_connections = DS_EMPTY_INITIALIZER;
+    LIST_FOR_EACH_SAFE (s, next, node, &remote->sessions) {
+            char *name = NULL;
+            js = s->js;                                         
+            name = jsonrpc_session_get_name(js);
+            if(name) {
+                ds_put_cstr(&active_connections, name);
+                ds_put_char(&active_connections, ',');
+            }
+    }
+    status->active_connections = ds_steal_cstr(&active_connections);
 }
 
 static void

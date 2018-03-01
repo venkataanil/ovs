@@ -836,6 +836,10 @@ update_remote_row(const struct ovsdb_row *row, struct ovsdb_txn *txn,
     if (status.n_connections > 1) {
         keys[n] = xstrdup("n_connections");
         values[n++] = xasprintf("%d", status.n_connections);
+        if (status.active_connections && status.active_connections[0]) {
+            keys[n] = xstrdup("active_connections");
+            values[n++] = xstrdup(status.active_connections);
+        }
     }
     if (status.bound_port != htons(0)) {
         keys[n] = xstrdup("bound_port");
